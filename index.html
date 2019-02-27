@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
+    <title>
+      Santa Bárbara Padel / Reservas
+    </title>
+
+    <style>
+      h1 {
+        font-size: 1.4rem;
+        margin-top: 10px;
+      }
+
+      h2 {
+        font-size: 1.1rem;
+        margin-top: 20px;
+      }
+
+      table {
+        font-size: 0.8em;
+      }
+
+      .loading {
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      #weather {
+        text-align: center;
+        margin-top: 40px;
+      }
+
+      .alto {
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <h1>Santa Bárbara Padel / Reservas</h1>
+
+      <a href="https://bit.ly/reglamento-interno-padel">Reglamento Interno</a> -
+      <a href="https://bit.ly/reservar-padel-santabarbara">Realizar Reserva</a>
+
+      <div class="loading" v-if="loading">
+        <div class="spinner-grow text-primary" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="spinner-grow text-secondary" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="spinner-grow text-success" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="spinner-grow text-danger" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="spinner-grow text-warning" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+        <div class="spinner-grow text-info" role="status">
+          <span class="sr-only">Loading...</span>
+        </div>
+      </div>
+
+      <div v-for="matches, day in groupedMatches">
+        <h2>{{ day == today ? 'hoy' : day }}</h2>
+          <table class="table table-striped table-sm">
+            <tbody>
+              <tr v-for="match in matches">
+                <td style="width:35%">{{ match.hora }}</td>
+                <td style="width:65%">{{ match.players }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="weather">
+      <div id="c_dd7e5fa75904735d8c802558740dbd65" class="alto"></div><script type="text/javascript" src="https://www.eltiempo.es/widget/widget_loader/dd7e5fa75904735d8c802558740dbd65"></script>
+    </div>
+  </body>
+
+  <script src="https://unpkg.com/vue"></script>
+  <script>
+    let date_locale = "es-ES"
+    let date_options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    let date_pattern = /(\d{1,2})\/(\d{1,2})/
+
+    function removeEmptyElements(array) {
+      return array.filter(function(el) {
+        return el != null
+      })
+    }
+
+    function countAndReplaceFriends(array) {
+      number_of_friends = array.filter(function(el) {
+        return /amig[o|a]/i.test(el)
+      }).length
+
+      neighbors = array.filter(function(el) {
+        return !(/amig[o|a]/i.test(el))
+      })
+
+      if (number_of_friends > 0) {
+        neighbors.push(numberOfFriendsToString(number_of_friends))
+      }
+
+      return neighbors
+    }
+
+    function numberOfFriendsToString(number_of_friends) {
+      switch(number_of_friends) {
+        case 1:
+          return " un amigo"
+        case 2:
+          return " dos amigos"
+        case 3:
+          return " tres amigos"
+        default:
+          return " demasiados amigos"
+      }
+    }
+
+    function toSentence(array) {
+      array = removeEmptyElements(array)
+      return countAndReplaceFriends(array)
+               .join(", ")
+               .replace(/,\s([^,]+)$/, ' y $1');
+    }
+
+    function groupBy(array, fn){
+      let result = {}
+      array.forEach(item => {
+        let key = fn(item)
+        if(!result[key]){
+          result[key] = []
+        }
+        result[key].push(item)
+      })
+      return result
+    }
+
+    function getMonth(date) {
+      return date_pattern.exec(date)[2] - 1
+    }
+
+    function getDay(date) {
+      return date_pattern.exec(date)[1]
+    }
+
+    const app = new Vue({
+      el: '#app',
+      data() {
+        return {
+          matches: [],
+          loading: false,
+          today: new Date().toLocaleDateString(date_locale, date_options)
+        }
+      },
+      created() {
+        this.fetchData()
+      },
+      watch: {
+        matches() {
+          this.loading = false
+        }
+      },
+      methods: {
+        fetchData() {
+          this.loading = true
+          fetch('https://api.sheety.co/fdcbc402-bc1a-42dd-bad6-d47099195eb2')
+            .then(response => response.json())
+            .then(json => { this.matches = json.map(function(match) {
+              match.players = toSentence([
+                match.jugador1, match.jugador2, match.jugador3, match.jugador4
+              ])
+
+              return match
+            })})
+        }
+      },
+      computed: {
+        groupedMatches() {
+          return groupBy(this.matches, match =>
+            new Date(new Date().getFullYear(), getMonth(match.fecha), getDay(match.fecha))
+              .toLocaleDateString(date_locale, date_options)
+          )
+        }
+      }
+    })
+  </script>
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-135465935-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-135465935-1');
+  </script>
+</html>

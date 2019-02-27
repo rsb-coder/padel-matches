@@ -1,0 +1,1 @@
+s3-deploy index.html --region eu-central-1 --bucket residencial-santa-barbara-projects --profile rsbp-user
